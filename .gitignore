@@ -1,0 +1,9 @@
+bin
+obj
+packages
+*.user
+.vs
+.idea
+*_wpftmp.csproj
+*.cache
+Woven/nupkg
