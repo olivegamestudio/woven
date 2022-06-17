@@ -8,6 +8,7 @@ Console.WriteLine("Welcome to Woven...");
 string weaveFile = "weave.xml";
 var destPath = string.Empty;
 
+// get source weave file and destination path from the command line
 Parser.Default.ParseArguments<Options>(args)
     .WithParsed<Options>(o =>
     {
@@ -15,6 +16,14 @@ Parser.Default.ParseArguments<Options>(args)
         destPath = o.Destination;
     });
 
+// and validate destination path
+if (string.IsNullOrEmpty(destPath))
+{
+    Console.WriteLine("Invalid destination path.");
+    Environment.Exit(-1);
+}
+
+// and source file exists
 Console.WriteLine($"Reading weave file: '{weaveFile}'.");
 if (!File.Exists(weaveFile))
 {
@@ -22,31 +31,36 @@ if (!File.Exists(weaveFile))
     Environment.Exit(-1);
 }
 
+// load the source file
 XDocument weaveDocument = XDocument.Load(weaveFile);
 WeaveProject project = (WeaveProject)new XmlSerializer(typeof(WeaveProject)).Deserialize(weaveDocument.CreateReader());
 
+// and process the repositories
 foreach (WeaveRepository repositoryConfiguration in project.Repositories)
 {
-    var secrets = new SecretStore("git");
-    var auth = new BasicAuthentication(secrets);
+    var credentials = new CredentialsHelper().GetCredentials(repositoryConfiguration.Url);
+    if (credentials == null)
+    {
+        Console.WriteLine("Failed to get credentials.");
+        Environment.Exit(-2);
+    }
 
-    var target = new TargetUri(new Uri(repositoryConfiguration.Url));
-    var root = target.QueryUri.GetLeftPart(UriPartial.Authority);
-    var creds = auth.GetCredentials(new Uri(root));
-
-    var folderName = Path.GetFileNameWithoutExtension(target.QueryUri.LocalPath);
-    
     var options = new CloneOptions
     {
         CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
         {
-            Username = creds.Username,
-            Password = creds.Password
+            Username = credentials.Username,
+            Password = credentials.Password
         },
         BranchName = repositoryConfiguration.Branch,
     };
 
+    var target = new TargetUri(new Uri(repositoryConfiguration.Url));
+    var root = target.QueryUri.GetLeftPart(UriPartial.Authority);
+    var folderName = Path.GetFileNameWithoutExtension(target.QueryUri.LocalPath);
     destPath = Path.Combine(destPath, folderName);
+
+    // clone repository
     Console.WriteLine($"Downloading '{repositoryConfiguration.Name}' to '{destPath}'...");
-    var path = Repository.Clone(repositoryConfiguration.Url, destPath, options);
+    var _ = Repository.Clone(repositoryConfiguration.Url, destPath, options);
 }
