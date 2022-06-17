@@ -58,9 +58,9 @@ foreach (WeaveRepository repositoryConfiguration in project.Repositories)
     var target = new TargetUri(new Uri(repositoryConfiguration.Url));
     var root = target.QueryUri.GetLeftPart(UriPartial.Authority);
     var folderName = Path.GetFileNameWithoutExtension(target.QueryUri.LocalPath);
-    destPath = Path.Combine(destPath, folderName);
+    string relativeDestPath = Path.Combine(destPath, folderName);
 
     // clone repository
-    Console.WriteLine($"Downloading '{repositoryConfiguration.Name}' to '{destPath}'...");
-    var _ = Repository.Clone(repositoryConfiguration.Url, destPath, options);
+    Console.WriteLine($"Downloading '{repositoryConfiguration.Name}' to '{relativeDestPath}'...");
+    var _ = Repository.Clone(repositoryConfiguration.Url, relativeDestPath, options);
 }
